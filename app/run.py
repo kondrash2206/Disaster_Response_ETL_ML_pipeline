@@ -1,7 +1,6 @@
 import json
 import plotly
 import pandas as pd
-
 from nltk.stem import WordNetLemmatizer
 from nltk.tokenize import word_tokenize
 
@@ -25,13 +24,31 @@ def tokenize(text):
 
     return clean_tokens
 
+def f1_micro_average(y_test,y_pred):
+    '''
+    Calculates s.c. micro average f1
+    Input: y_test, y_pred - arrays with test and prediction values
+    Output: micro average f1
+    '''
+    
+    TN = []
+    FP = []
+    FN = []
+    for i in range(y_pred.shape[1]):
+        TN.append(confusion_matrix(np.array(y_test)[:,i],y_pred[:,i])[1,1])
+        FP.append(confusion_matrix(np.array(y_test)[:,i],y_pred[:,i])[1,0])
+        FN.append(confusion_matrix(np.array(y_test)[:,i],y_pred[:,i])[0,1])
+    precision = np.sum(TN) / (np.sum(TN) + np.sum(FN))
+    recall = np.sum(TN) / (np.sum(TN) + np.sum(FP))
+    
+    return hmean([precision,recall])
+
 # load data
 engine = create_engine('sqlite:///../data/twitter_messages.db')
 df = pd.read_sql_table('message', engine)
 
 # load model
 model = joblib.load("../models/model.pkl")
-
 
 # index webpage displays cool visuals and receives user input text for model
 @app.route('/')
@@ -40,17 +57,25 @@ def index():
     
     # extract data needed for visuals
     # TODO: Below is an example - modify to extract data for your own visuals
-    genre_counts = df.groupby('genre').count()['message']
-    genre_names = list(genre_counts.index)
+    data_plot = df.groupby(['genre','related'])['message'].count().reset_index()
+    data_plot['name'] = data_plot['genre'] + '_' + data_plot['related'].astype(str)
+
+    ratio_direct = []
+    ratio_news = []
+    ratio_social = []
     
-    ratio_one = []
     new_df = df.iloc[:,4:]
+    
     for i in new_df.columns:
-        ratio_one.append(new_df[i].sum() / new_df.shape[0])
+        ratio_direct.append(df.loc[df['genre'] == 'direct',i].sum() / df.loc[df['genre'] == 'direct'].shape[0])
+        ratio_news.append(df.loc[df['genre'] == 'news',i].sum() / df.loc[df['genre'] == 'news'].shape[0])
+        ratio_social.append(df.loc[df['genre'] == 'social',i].sum() / df.loc[df['genre'] == 'social'].shape[0])
 
     skew_data = pd.DataFrame({
         'group':new_df.columns,
-        'ratio_one':ratio_one
+        'ratio_direct':ratio_direct,
+        'ratio_news':ratio_news,
+        'ratio_social':ratio_social
     })
     
     # create visuals
@@ -59,18 +84,18 @@ def index():
         {
             'data': [
                 Bar(
-                    x=genre_names,
-                    y=genre_counts
+                    x=skew_data['group'],
+                    y=skew_data['ratio_direct']
                 )
             ],
 
             'layout': {
-                'title': 'Distribution of Message Genres',
+                'title': 'Proportion of "1" in the groups for genre "direct"',
                 'yaxis': {
-                    'title': "count"
+                    'title': "Ratio of 1 in the group"
                 },
                 'xaxis': {
-                    'title': "Genre"
+                    'title': ""
                 }
             }
         },
@@ -79,12 +104,30 @@ def index():
             'data': [
                 Bar(
                     x=skew_data['group'],
-                    y=skew_data['ratio_one']
+                    y=skew_data['ratio_news']
                 )
             ],
 
             'layout': {
-                'title': 'Proportion of "1" in the groups',
+                'title': 'Proportion of "1" in the groups for genre "news"',
+                'yaxis': {
+                    'title': "Ratio of 1 in the group"
+                },
+                'xaxis': {
+                    'title': ""
+                }
+            }
+        },
+        {
+            'data': [
+                Bar(
+                    x=skew_data['group'],
+                    y=skew_data['ratio_social']
+                )
+            ],
+
+            'layout': {
+                'title': 'Proportion of "1" in the groups for genre "social"',
                 'yaxis': {
                     'title': "Ratio of 1 in the group"
                 },

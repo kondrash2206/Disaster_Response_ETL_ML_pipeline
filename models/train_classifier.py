@@ -57,6 +57,26 @@ def tokenize(text):
     return tokens
 
 
+def f1_micro_average(y_test,y_pred):
+    '''
+    Calculates s.c. micro average f1
+    Input: y_test, y_pred - arrays with test and prediction values
+    Output: micro average f1
+    '''
+    
+    TN = []
+    FP = []
+    FN = []
+    for i in range(y_pred.shape[1]):
+        TN.append(confusion_matrix(np.array(y_test)[:,i],y_pred[:,i])[1,1])
+        FP.append(confusion_matrix(np.array(y_test)[:,i],y_pred[:,i])[1,0])
+        FN.append(confusion_matrix(np.array(y_test)[:,i],y_pred[:,i])[0,1])
+    precision = np.sum(TN) / (np.sum(TN) + np.sum(FN))
+    recall = np.sum(TN) / (np.sum(TN) + np.sum(FP))
+    
+    return hmean([precision,recall])
+
+
 def build_model():
     '''
     Defines a ML Pipeline
@@ -65,30 +85,41 @@ def build_model():
     pipeline = Pipeline([
         ('vect', CountVectorizer(tokenizer=tokenize)),
         ('tfidf', TfidfTransformer()),
-        ('clf', MultiOutputClassifier(AdaBoostClassifier(n_estimators=50)))
+        ('clf', MultiOutputClassifier(AdaBoostClassifier()))
         ])
-    return pipeline
+    
+    parameters = {'vect__min_df': [1, 5],
+              'clf__estimator__n_estimators': [50, 75],
+             'clf__estimator__learning_rate':[0.1,1,10]}
+
+    scorer = make_scorer(f1_micro_average)
+
+    cv = GridSearchCV(pipeline, param_grid = parameters, scoring = scorer, verbose = 10, cv = 2)
+
+    return cv
+
+    
+
 
 def evaluate_model(model, X_test, Y_test, category_names):
 
     '''
-    Evaluates a model using a Test Set by calculating  s.c. micro average f1
-    Input: model - fitted ML model, X_test and Y_test - Test set arrays, category_names - numpy array with category names
-    Output: micro average f1 as float
-    '''    
-
+    Calculates precision, recall and f1 metrics for each category and combines it into a single dataframe
+    Input: y_test, y_pred - arrays with test and prediction values
+    Output: res_metrics - a pandas dataframe with all metric values for each category
+    '''
     y_pred = model.predict(X_test)
     
-    TN = []
-    FP = []
-    FN = []
+    res_metrics = []
     for i in range(y_pred.shape[1]):
-        TN.append(confusion_matrix(np.array(Y_test)[:,i],y_pred[:,i])[1,1])
-        FP.append(confusion_matrix(np.array(Y_test)[:,i],y_pred[:,i])[1,0])
-        FN.append(confusion_matrix(np.array(Y_test)[:,i],y_pred[:,i])[0,1])
-    precision = np.sum(TN) / (np.sum(TN) + np.sum(FN))
-    recall = np.sum(TN) / (np.sum(TN) + np.sum(FP))
-    print('Model F1_micro_averaged is {}'.format(hmean([precision,recall])))
+        f1 = f1_score(Y_test.values[:,i],y_pred[:,i])
+        precision = precision_score(Y_test.values[:,i],y_pred[:,i])
+        recall = recall_score(Y_test.values[:,i],y_pred[:,i])
+        res_metrics.append([f1,precision,recall])
+        
+    print('F1_micro_average: {}'.format(f1_micro_average(Y_test,y_pred)))
+    print(pd.DataFrame(res_metrics, columns = ['f1','precision','recall'], index = category_names) )
+    
 
 def save_model(model, model_filepath):
     '''
