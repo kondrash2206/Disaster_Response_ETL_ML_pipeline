@@ -30,3 +30,7 @@ This project contains two jupyter notebooks: **ETL_Pipeline_Preparation.ipynb** 
     `python run.py`
 
 3. Go to **localhost:3001** 
+
+
+### Screenshot from the web app
+![](https://raw.githubusercontent.com/kondrash2206/Disaster_Response_ETL_ML_pipeline/master/screenshot.png)
