@@ -74,6 +74,10 @@ def clean_data(df):
     return df
         
 def save_data(df, database_filename):
+    '''
+    Saves transformed and cleaned data into a SQL Database
+    Input: df - transformed and cleaned dataframe, database_filename - a filename for an SQL Db 
+    '''
     path = 'sqlite:///'+str(database_filename)
     engine = create_engine(path)
     df.to_sql('message', engine, index=False)  
@@ -103,11 +107,6 @@ def main():
               'to as the third argument. \n\nExample: python process_data.py '\
               'disaster_messages.csv disaster_categories.csv '\
               'DisasterResponse.db')
-
-    #df = load_data(messages_filepath, categories_filepath)
-    #df = clean_data(df)
-    #save_data(df,database_filepath) 
-    #print(df.shape)
 
 if __name__ == '__main__':
     main()

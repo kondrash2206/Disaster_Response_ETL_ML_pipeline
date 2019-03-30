@@ -25,6 +25,13 @@ nltk.download(['punkt', 'wordnet', 'averaged_perceptron_tagger', 'stopwords'])
 
 
 def load_data(database_filepath):
+    '''
+    Loads data from SQL Database
+    Input: filepath to an existing SQL Database
+    Output: X-pandas Series with messages, Y - pandas dataframe containing categories,
+            Y.columns - numpy array with category names
+    '''
+    
     path = 'sqlite:///'+database_filepath
     engine = create_engine(path)
     df = pd.read_sql('SELECT * FROM message',engine)
@@ -34,6 +41,12 @@ def load_data(database_filepath):
     return X, Y, Y.columns
 
 def tokenize(text):
+    '''
+    Function that transfers text to tokes
+    Input: text as string, a unmodified plain text
+    Output: tokens created from modified and cleaned text
+    '''
+    
     lemmatizer = WordNetLemmatizer()
     stop_words = stopwords.words("english")
 
@@ -45,6 +58,10 @@ def tokenize(text):
 
 
 def build_model():
+    '''
+    Defines a ML Pipeline
+    '''
+    
     pipeline = Pipeline([
         ('vect', CountVectorizer(tokenizer=tokenize)),
         ('tfidf', TfidfTransformer()),
@@ -53,6 +70,13 @@ def build_model():
     return pipeline
 
 def evaluate_model(model, X_test, Y_test, category_names):
+
+    '''
+    Evaluates a model using a Test Set by calculating  s.c. micro average f1
+    Input: model - fitted ML model, X_test and Y_test - Test set arrays, category_names - numpy array with category names
+    Output: micro average f1 as float
+    '''    
+
     y_pred = model.predict(X_test)
     
     TN = []
@@ -67,6 +91,10 @@ def evaluate_model(model, X_test, Y_test, category_names):
     print('Model F1_micro_averaged is {}'.format(hmean([precision,recall])))
 
 def save_model(model, model_filepath):
+    '''
+    Saves resulting trained model into a pkl file
+    '''
+    
     pickle.dump(model, open(model_filepath, 'wb'))
 
 
